@@ -282,7 +282,9 @@ function App() {
       <div className="brand"><div className="brand-icon"><Wallet size={20} /></div><div><b>{L('My Money', 'আমার হিসাব')}</b><small>{L('Personal finance', 'ব্যক্তিগত হিসাব')}</small></div></div>
       <div className="side-label">{L('Menu', 'মেনু')}</div>
       {NAV.map(n => <button key={n.id} className={`nav-item ${page === n.id ? 'active' : ''}`} onClick={() => setPage(n.id)}><n.icon size={18} />{T.pick(n)}</button>)}
-      <div className="sidebar-bottom"><span className="privacy-dot" />{L('Data stays on this device', 'ডেটা শুধু এই ডিভাইসে থাকে')}</div>
+      <div className="sidebar-bottom"><span className="privacy-dot" />{syncCfg.token
+        ? L('Synced with your private GitHub repo', 'আপনার প্রাইভেট GitHub রিপোতে সিঙ্ক হয়')
+        : L('Data stays on this device', 'ডেটা শুধু এই ডিভাইসে থাকে')}</div>
     </aside>
 
     <main className="main">
