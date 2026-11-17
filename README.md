@@ -50,6 +50,14 @@ git commit -m "Describe your change"
 git push
 ```
 
+## Sync across devices
+Data is stored in a **private** GitHub repo (`sbhSajid/my-money-data`, file `data.json`) via the GitHub
+REST API (`src/sync.js`). Each device keeps a local copy (works offline) and merges with GitHub on save,
+on open, when the app returns to the foreground, and every 30 s while open. Deletes are kept as
+tombstones so they propagate. Set up per device with the cloud button in the top bar, using a
+fine-grained token limited to that one repo with **Contents: Read and write**.
+The token is stored only in that browser's LocalStorage; it is never in this code repository.
+
 ## iPhone / Add to Home Screen
 Open the live site in Safari → Share → **Add to Home Screen**. It opens full-screen with its own icon
 (`public/manifest.webmanifest`, `public/icons/`). The app has no offline mode yet, so it needs internet to open.
