@@ -3,9 +3,10 @@ import {
   LayoutDashboard, ArrowLeftRight, HandCoins, FileText, Plus, X,
   TrendingUp, TrendingDown, Wallet, ArrowUpRight, ArrowDownLeft,
   Search, Download, Trash2, Pencil, CalendarDays, CircleDollarSign, Check, ChevronRight, History,
-  Cloud, CloudOff, RefreshCw, AlertTriangle
+  Cloud, CloudOff, RefreshCw, AlertTriangle, Users
 } from 'lucide-react'
 import { checkRepo, syncOnce, merge, canon } from './sync.js'
+import Shared from './Shared.jsx'
 import {
   Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis
 } from 'recharts'
@@ -58,6 +59,8 @@ const NAV = [
   { id: 'home', en: 'Home', bn: 'হোম', icon: LayoutDashboard },
   { id: 'transactions', en: 'Activity', bn: 'লেনদেন', icon: ArrowLeftRight },
   { id: 'debts', en: 'Lending', bn: 'ধার-দেনা', icon: HandCoins },
+  // Shared household section is Bangla-only by design
+  { id: 'shared', en: 'আমাদের খরচ', bn: 'আমাদের খরচ', short: 'সংসার', icon: Users },
   { id: 'reports', en: 'Reports', bn: 'রিপোর্ট', icon: FileText }
 ]
 
@@ -90,6 +93,7 @@ function App() {
   const [form, setForm] = useState({ type: 'expense', amount: '', date: today(), title: '', category: 'Food', person: '', note: '', previous: false })
   const [query, setQuery] = useState('')
   const [filter, setFilter] = useState('all')
+  const [sharedAdd, setSharedAdd] = useState(0) // bumps to open the shared-expense form
   const [toast, setToast] = useState('')
   useEffect(() => { if (!toast) return; const id = setTimeout(() => setToast(''), 1800); return () => clearTimeout(id) }, [toast])
 
@@ -185,6 +189,7 @@ function App() {
   }, [transactions, nowMonth])
 
   const openAdd = (type, previous = false) => {
+    if (page === 'shared' && !previous) { setSharedAdd(n => n + 1); return }
     setEditing(null)
     setForm({ type: type || 'expense', amount: '', date: today(), title: '', category: type === 'income' ? 'Salary' : 'Food', person: '', note: '', previous })
     setModal(true)
@@ -367,6 +372,8 @@ function App() {
         </div>
       </section>}
 
+      {page === 'shared' && <Shared cfg={syncCfg} addSignal={sharedAdd} />}
+
       {page === 'reports' && <section className="content">
         <div className="welcome-row"><div><h2>{L('Money report', 'আর্থিক রিপোর্ট')}</h2><p>{L('A snapshot of your finances', 'আপনার আর্থিক সারাংশ')}</p></div><button className="primary-btn" onClick={exportPdf}><Download size={17} /> {L('Download PDF', 'পিডিএফ ডাউনলোড')}</button></div>
         <div className="stats-grid">
@@ -529,7 +536,7 @@ function LangToggle({ lang, setLang }) {
   </div>
 }
 function NavBtn({ n, page, setPage, T }) {
-  return <button className={page === n.id ? 'selected' : ''} onClick={() => setPage(n.id)}><n.icon size={21} /><span>{T.pick(n)}</span></button>
+  return <button className={page === n.id ? 'selected' : ''} onClick={() => setPage(n.id)}><n.icon size={21} /><span>{n.short || T.pick(n)}</span></button>
 }
 function Stat({ icon: Icon, label, value }) {
   return <div className="stat-card"><div className="stat-icon"><Icon size={17} /></div><span className="stat-label">{label}</span><strong>{value}</strong></div>
