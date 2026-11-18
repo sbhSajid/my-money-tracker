@@ -7,6 +7,7 @@ import {
 } from 'lucide-react'
 import { checkRepo, syncOnce, merge, canon } from './sync.js'
 import Shared from './Shared.jsx'
+import { LockScreen, PinSheet, LockButton, PIN_KEY, RELOCK_MS } from './Lock.jsx'
 import {
   Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis
 } from 'recharts'
@@ -94,6 +95,27 @@ function App() {
   const [query, setQuery] = useState('')
   const [filter, setFilter] = useState('all')
   const [sharedAdd, setSharedAdd] = useState(0) // bumps to open the shared-expense form
+
+  // ---------- App lock (PIN) ----------
+  const [pinRec, setPinRec] = useState(() => readJSON(PIN_KEY, null))
+  const [locked, setLocked] = useState(() => !!readJSON(PIN_KEY, null))
+  const [pinOpen, setPinOpen] = useState(false)
+  useEffect(() => { try { pinRec ? localStorage.setItem(PIN_KEY, JSON.stringify(pinRec)) : localStorage.removeItem(PIN_KEY) } catch {} }, [pinRec])
+  useEffect(() => {
+    if (!pinRec) return
+    let hiddenAt = 0
+    const onVis = () => {
+      if (document.visibilityState === 'hidden') hiddenAt = Date.now()
+      else if (hiddenAt && Date.now() - hiddenAt > RELOCK_MS) setLocked(true)
+    }
+    document.addEventListener('visibilitychange', onVis)
+    return () => document.removeEventListener('visibilitychange', onVis)
+  }, [pinRec])
+  // "Forgot PIN": wipe this device only. Synced data stays in the private GitHub repo.
+  const wipeDevice = () => {
+    try { ['my-money-tracker-v1', 'my-money-deleted', 'my-money-sync', 'my-money-shared-v1', 'my-money-shared-deleted', PIN_KEY].forEach(k => localStorage.removeItem(k)) } catch {}
+    location.reload()
+  }
   const [toast, setToast] = useState('')
   useEffect(() => { if (!toast) return; const id = setTimeout(() => setToast(''), 1800); return () => clearTimeout(id) }, [toast])
 
@@ -163,7 +185,7 @@ function App() {
     document.documentElement.lang = lang
   }, [lang])
   useEffect(() => { window.scrollTo(0, 0) }, [page])
-  useEffect(() => { document.body.style.overflow = modal || syncOpen ? 'hidden' : '' }, [modal, syncOpen])
+  useEffect(() => { document.body.style.overflow = modal || syncOpen || pinOpen ? 'hidden' : '' }, [modal, syncOpen, pinOpen])
 
   const nowMonth = monthKey(today())
   const sorted = useMemo(() => [...transactions].sort((a, b) => b.date.localeCompare(a.date) || b.createdAt - a.createdAt), [transactions])
@@ -282,6 +304,11 @@ function App() {
   const cats = CATS[form.type === 'income' ? 'income' : 'expense']
   const toggle = <LangToggle lang={lang} setLang={setLang} />
 
+  // While locked, nothing from the data is rendered at all
+  if (locked && pinRec) return <div className={`app-shell lang-${lang}`}>
+    <LockScreen rec={pinRec} L={L} syncOn={!!syncCfg.token} onUnlock={() => setLocked(false)} onForgot={wipeDevice} />
+  </div>
+
   return <div className={`app-shell lang-${lang}`}>
     <aside className="sidebar">
       <div className="brand"><div className="brand-icon"><Wallet size={20} /></div><div><b>{L('My Money', 'আমার হিসাব')}</b><small>{L('Personal finance', 'ব্যক্তিগত হিসাব')}</small></div></div>
@@ -297,6 +324,7 @@ function App() {
         <div><div className="eyebrow">{L('My Money', 'আমার হিসাব')}</div><h1>{T.pick(current)}</h1></div>
         <div className="top-actions">
           <span className="today-label"><CalendarDays size={15} />{T.date(null, { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })}</span>
+          <LockButton on={!!pinRec} L={L} onClick={() => setPinOpen(true)} />
           <SyncButton status={syncStatus} onClick={() => setSyncOpen(true)} L={L} />
           {toggle}
           <button className="primary-btn" onClick={() => openAdd('expense')}><Plus size={17} /> {L('Add entry', 'নতুন এন্ট্রি')}</button>
@@ -439,6 +467,11 @@ function App() {
 
     {syncOpen && <SyncSheet cfg={syncCfg} status={syncStatus} msg={syncMsg} lastSync={lastSync} T={T}
       onClose={() => setSyncOpen(false)} onConnect={connectSync} onDisconnect={disconnectSync} onSyncNow={runSync} />}
+
+    {pinOpen && <PinSheet rec={pinRec} L={L} onClose={() => setPinOpen(false)}
+      onSave={rec => { setPinRec(rec); setPinOpen(false); setToast(L('App lock is on', 'অ্যাপ লক চালু হয়েছে')) }}
+      onRemove={() => { setPinRec(null); setPinOpen(false); setToast(L('App lock turned off', 'অ্যাপ লক বন্ধ হয়েছে')) }}
+      onLockNow={() => { setPinOpen(false); setLocked(true) }} />}
 
     {toast && <div className="toast" role="status"><Check size={16} />{toast}</div>}
   </div>
